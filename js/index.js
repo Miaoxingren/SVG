@@ -11,25 +11,6 @@
         return this;
     }
     var treemap = {};
-    treemap.defaults = {
-        textStyle: {
-            fontStyle: 'normal',
-            fontWeight: 'normal',
-            fontSize: '14px',
-            fontFamily: 'sans-serif',
-            textAlign: 'left',
-            textBaseline: 'middle',
-            textColor: '#000',
-            offsetX: 10
-        },
-        rectStyle: {
-            borderRadius: 0,
-            fillColor: 'transparent',
-            strokeColor: '#F6F6F6',
-            lineWidth: 1,
-            lineJoin: 'miter'
-        }
-    };
     treemap.styles = {
         parent: {
             textStyle: {
@@ -114,9 +95,8 @@
         ctx.lineWidth = rectStyle.lineWidth;
         ctx.fillStyle = rectStyle.fillColor;
         ctx.strokeStyle = rectStyle.strokeColor;
-        // treemap.styles.rect.borderRadius = rectStyle.borderRadius;
     };
-    treemap.inheritStyle = function (parent, child) {
+    treemap.inheritStyle = function(parent, child) {
         if (!parent.textStyle || !child.textStyle || !parent.rectStyle || !child.rectStyle) {
             console.error('Text style or rect style is not defined.');
             return;
@@ -125,7 +105,7 @@
         var rectStyle = angular.extend({}, parent.rectStyle, child.rectStyle);
         return {
             textStyle: textStyle,
-            rectStyle:rectStyle
+            rectStyle: rectStyle
         }
     };
     treemap.setOption = function(option) {
@@ -168,15 +148,6 @@
             treemap.generate(branch);
             treemap.styles.parent = prevStyle;
         }
-    };
-    treemap.setStyle = function(obj) {
-        var ctx = treemap.ctx;
-        var textStyle = obj.textStyle ? treemap.textStyle(obj.textStyle) : treemap.textStyle();
-        var rectStyle = obj.rectStyle ? treemap.rectStyle(obj.rectStyle) : treemap.rectStyle();
-        return {
-            textStyle: textStyle,
-            rectStyle: rectStyle
-        };
     };
     treemap.runLayout = function(obj, outer) {
         if (outer.layout === 'vertical') {
@@ -292,22 +263,12 @@
             return;
         }
         var ctx = treemap.ctx;
-        
+        treemap.rectStyle(treemap.styles.child.rectStyle);
         if (obj.rectStyle && obj.rectStyle.borderRadius && obj.rectStyle.borderRadius > 0) {
-            // ctx.lineWidth = 5;
-            // ctx.fillStyle = treemap.styles.rect.fillColor;
-            // ctx.strokeStyle = treemap.styles.rect.strokeColor;
-            treemap.rectStyle(treemap.styles.child.rectStyle);
             ctx.roundRect(obj.x, obj.y, obj.width, obj.height, obj.rectStyle.borderRadius);
             ctx.fill();
             ctx.stroke();
         } else {
-            // ctx.fillStyle = treemap.styles.rect.fillColor;
-            // ctx.strokeStyle = treemap.styles.rect.strokeColor;
-            treemap.rectStyle(treemap.styles.child.rectStyle);
-            // ctx.rect(obj.x, obj.y, obj.width, obj.height);
-            // ctx.fill();
-            // ctx.stroke();
             ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
             ctx.strokeRect(obj.x, obj.y, obj.width, obj.height);
         }
@@ -336,8 +297,8 @@ canvasModule.controller('canvasCtrl', ['$scope', '$timeout', function($scope, $t
     var option = {
         root: {
             layout: 'vertical',
-            paddingX: 5,
-            paddingY: 5,
+            paddingX: 15,
+            paddingY: 15,
             label: 'label',
             textStyle: {
                 textAlign: 'center'
@@ -346,40 +307,30 @@ canvasModule.controller('canvasCtrl', ['$scope', '$timeout', function($scope, $t
                 fillColor: 'black'
             },
             children: [{
-                x: 50,
-                y: 50,
-                width: 300,
-                height: 50,
-                // label: 'm1',
                 layout: 'vertical',
+                paddingX: 20,
+                paddingY: 20,
                 rectStyle: {
                     borderRadius: 5,
                     fillColor: 'red'
                 },
-                paddingX: 10,
-                paddingY: 10,
                 children: [{
-                    x: 100,
                     label: "m1.1",
                     rectStyle: {
                         borderRadius: 10
                     },
                 }, {
-                    x: 100,
                     label: "m1.2"
                 }]
             }, {
-                x: 50,
-                y: 50,
-                width: 460,
-                height: 50,
                 paddingX: 5,
                 paddingY: 5,
-                // label: 'm2',
                 layout: 'vertical',
                 children: [{
-                    // label: 'm2.1',
                     layout: 'horizontal',
+                    rectStyle: {
+                        fillColor: 'blue'
+                    },
                     children: [{
                         label: 'm2.1.1'
                     }, {
@@ -391,7 +342,6 @@ canvasModule.controller('canvasCtrl', ['$scope', '$timeout', function($scope, $t
                     label: 'm2.2',
                     width: 100
                 }, {
-                    // label: 'm2.3',
                     layout: 'horizontal',
                     children: [{
                         label: 'm2.3.1'
@@ -400,10 +350,7 @@ canvasModule.controller('canvasCtrl', ['$scope', '$timeout', function($scope, $t
                     }]
                 }]
             }, {
-                x: 50,
-                y: 50,
-                width: 460,
-                height: 50,
+                width: 420,
                 label: 'm3'
             }]
         }
