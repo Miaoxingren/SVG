@@ -9,8 +9,29 @@
         this.arcTo(x, y, x + width, y, radius);
         this.closePath();
         return this;
-    }
+    };
     var treemap = {};
+    treemap.init = function(dom) {
+        if (!dom) {
+            console.error('Dom does not exist.');
+            return;
+        }
+        if (!dom.width || !dom.height) {
+            console.error("Dom’s width & height should be ready before init.");
+            return;
+        }
+        treemap.dom = dom;
+        treemap.ctx = dom.getContext('2d');
+    };
+    treemap.setOption = function(option) {
+        if (!option || !option.root) {
+            console.error("Option with root should be ready before set.");
+            return;
+        }
+        var root = option.root;
+        treemap.initRoot(root);
+        treemap.generate(root);
+    };
     treemap.styles = {
         parent: {
             textStyle: {
@@ -70,18 +91,7 @@
         outer.paddingX = obj.paddingX || outer.paddingX;
         outer.paddingY = obj.paddingY || outer.paddingY;
     };
-    treemap.init = function(dom) {
-        if (!dom) {
-            console.error('Dom does not exist.');
-            return;
-        }
-        if (!dom.width || !dom.height) {
-            console.error("Dom’s width & height should be ready before init.");
-            return;
-        }
-        treemap.dom = dom;
-        treemap.ctx = dom.getContext('2d');
-    };
+
     treemap.textStyle = function(textStyle) {
         var ctx = treemap.ctx;
         ctx.font = textStyle.fontStyle + ' ' + textStyle.fontWeight + ' ' + textStyle.fontSize + ' ' + textStyle.fontFamily;
@@ -108,15 +118,7 @@
             rectStyle: rectStyle
         }
     };
-    treemap.setOption = function(option) {
-        if (!option || !option.root) {
-            console.error("Option with root should be ready before set.");
-            return;
-        }
-        var root = option.root;
-        treemap.initRoot(root);
-        treemap.generate(root);
-    };
+    
     treemap.initRoot = function(root) {
         root.x = 0;
         root.y = 0;
@@ -155,7 +157,7 @@
         } else if (outer.layout === 'horizontal') {
             return treemap.runHorizontalLayout(obj, outer);
         } else {
-            return treemap.runNoLayout(obj, parentStyle);
+            return treemap.runNoLayout(obj);
         }
     };
     treemap.runNoLayout = function(obj) {
@@ -262,6 +264,10 @@
             console.error("Rect's position or size should be defined.");
             return;
         }
+        if (obj.x + obj.width > treemap.dom.width || obj.y + obj.height > treemap.dom.height) {
+            console.error("Rect is out of canvas.");
+            return;
+        }
         var ctx = treemap.ctx;
         treemap.rectStyle(treemap.styles.child.rectStyle);
         if (obj.rectStyle && obj.rectStyle.borderRadius && obj.rectStyle.borderRadius > 0) {
@@ -351,7 +357,13 @@ canvasModule.controller('canvasCtrl', ['$scope', '$timeout', function($scope, $t
                 }]
             }, {
                 width: 420,
-                label: 'm3'
+                label: 'm3',
+                children: [{
+                    x: 50,
+                    y: 50,
+                    width: 50,
+                    height: 50
+                }]
             }]
         }
     };
