@@ -1,17 +1,12 @@
 (function(window) {
-    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
-        if (w < 2 * r) {
-            r = w / 2;
-        }
-        if (h < 2 * r) {
-            r = h / 2;
-        }
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+        radius = (width < 2 * radius) ? width / 2 : (height < 2 * radius) ? height / 2 : radius;
         this.beginPath();
-        this.moveTo(x + r, y);
-        this.arcTo(x + w, y, x + w, y + h, r);
-        this.arcTo(x + w, y + h, x, y + h, r);
-        this.arcTo(x, y + h, x, y, r);
-        this.arcTo(x, y, x + w, y, r);
+        this.moveTo(x + radius, y);
+        this.arcTo(x + width, y, x + width, y + height, radius);
+        this.arcTo(x + width, y + height, x, y + height, radius);
+        this.arcTo(x, y + height, x, y, radius);
+        this.arcTo(x, y, x + width, y, radius);
         this.closePath();
         return this;
     }
@@ -20,18 +15,59 @@
         textStyle: {
             fontStyle: 'normal',
             fontWeight: 'normal',
-            fontSize: '12px',
+            fontSize: '14px',
             fontFamily: 'sans-serif',
             textAlign: 'left',
             textBaseline: 'middle',
-            textColor: '#666'
+            textColor: '#000',
+            offsetX: 10
         },
         rectStyle: {
             borderRadius: 0,
-            fillColor: '#EEE',
-            strokeStyle: '#0F0',
-            lineWidth: '5',
-            lineJoin: 'round'
+            fillColor: 'transparent',
+            strokeColor: '#F6F6F6',
+            lineWidth: 1,
+            lineJoin: 'miter'
+        }
+    };
+    treemap.styles = {
+        parent: {
+            textStyle: {
+                fontStyle: 'normal',
+                fontWeight: 'normal',
+                fontSize: '14px',
+                fontFamily: 'sans-serif',
+                textAlign: 'left',
+                textBaseline: 'middle',
+                textColor: '#000',
+                offsetX: 10
+            },
+            rectStyle: {
+                borderRadius: 0,
+                fillColor: 'transparent',
+                strokeColor: '#F6F6F6',
+                lineWidth: 1,
+                lineJoin: 'miter'
+            }
+        },
+        child: {
+            textStyle: {
+                fontStyle: 'normal',
+                fontWeight: 'normal',
+                fontSize: '14px',
+                fontFamily: 'sans-serif',
+                textAlign: 'left',
+                textBaseline: 'middle',
+                textColor: '#000',
+                offsetX: 10
+            },
+            rectStyle: {
+                borderRadius: 0,
+                fillColor: 'transparent',
+                strokeColor: '#F6F6F6',
+                lineWidth: 1,
+                lineJoin: 'miter'
+            }
         }
     };
     treemap.outer = {
@@ -40,68 +76,86 @@
         width: 300,
         height: 300,
         layout: 'none',
-        padding: {
-            x: 10,
-            y: 10
-        }
+        paddingX: 10,
+        paddingY: 10
+    };
+    treemap.setOuter = function(obj) {
+        var outer = treemap.outer;
+        outer.x = obj.x;
+        outer.y = obj.y;
+        outer.width = obj.width;
+        outer.height = obj.height;
+        outer.layout = obj.layout || 'none';
+        outer.paddingX = obj.paddingX || outer.paddingX;
+        outer.paddingY = obj.paddingY || outer.paddingY;
     };
     treemap.init = function(dom) {
         if (!dom) {
-            console.error('Dom not exists!');
+            console.error('Dom does not exist.');
+            return;
         }
         if (!dom.width || !dom.height) {
-            console.error("Dom's width and height not defined");
+            console.error("Dom’s width & height should be ready before init.");
+            return;
         }
         treemap.dom = dom;
         treemap.ctx = dom.getContext('2d');
-        treemap.textStyle();
-        treemap.rectStyle();
     };
     treemap.textStyle = function(textStyle) {
-        var defaults = treemap.defaults.textStyle;
-        var option = textStyle ? angular.extend(textStyle, defaults) : defaults;
         var ctx = treemap.ctx;
-        ctx.font = option.fontStyle + ' ' + option.fontWeight + ' ' + option.fontSize + ' ' + option.fontFamily;
-        ctx.textAlign = option.textAlign;
-        ctx.textBaseline = option.textBaseline;
-        treemap.defaults.textStyle.textColor = option.textColor;
+        ctx.font = textStyle.fontStyle + ' ' + textStyle.fontWeight + ' ' + textStyle.fontSize + ' ' + textStyle.fontFamily;
+        ctx.textAlign = textStyle.textAlign;
+        ctx.textBaseline = textStyle.textBaseline;
+        ctx.fillStyle = textStyle.textColor;
     };
     treemap.rectStyle = function(rectStyle) {
-        var defaults = treemap.defaults.rectStyle;
-        var option = rectStyle ? angular.extend(rectStyle, defaults) : defaults;
         var ctx = treemap.ctx;
-        ctx.strokeStyle = option.strokeStyle;
-        ctx.lineWidth = option.lineWidth;
-        ctx.lineJoin = option.lineJoin;
-        treemap.defaults.rectStyle.fillColor = option.fillColor;
+        ctx.lineJoin = rectStyle.lineJoin;
+        ctx.lineWidth = rectStyle.lineWidth;
+        ctx.fillStyle = rectStyle.fillColor;
+        ctx.strokeStyle = rectStyle.strokeColor;
+        // treemap.styles.rect.borderRadius = rectStyle.borderRadius;
     };
-    treemap.padding = function(padding) {
-        if (padding && padding.x && padding.y) {
-            treemap.outer.padding = padding;
+    treemap.inheritStyle = function (parent, child) {
+        if (!parent.textStyle || !child.textStyle || !parent.rectStyle || !child.rectStyle) {
+            console.error('Text style or rect style is not defined.');
+            return;
         }
-        return treemap.outer.padding;
-    }
+        var textStyle = angular.extend({}, parent.textStyle, child.textStyle);
+        var rectStyle = angular.extend({}, parent.rectStyle, child.rectStyle);
+        return {
+            textStyle: textStyle,
+            rectStyle:rectStyle
+        }
+    };
     treemap.setOption = function(option) {
-        if (!option) {
+        if (!option || !option.root) {
+            console.error("Option with root should be ready before set.");
             return;
         }
         var root = option.root;
+        treemap.initRoot(root);
+        treemap.generate(root);
+    };
+    treemap.initRoot = function(root) {
         root.x = 0;
         root.y = 0;
         root.width = treemap.dom.width;
         root.height = treemap.dom.height;
-        treemap.generate(root);
+        root.layout = root.layout || 'none';
+        root.paddingX = root.paddingX || treemap.outer.paddingX;
+        root.paddingY = root.paddingY || treemap.outer.paddingY;
     };
     treemap.generate = function(obj) {
         if (!obj || !obj.children) {
             return;
         }
-        treemap.outer.x = obj.x;
-        treemap.outer.y = obj.y;
-        treemap.outer.width = obj.width;
-        treemap.outer.height = obj.height;
-        treemap.outer.layout = obj.layout || 'none';
-        obj.padding && treemap.padding(obj.padding);
+        treemap.setOuter(obj);
+        treemap.styles.parent = treemap.inheritStyle(treemap.styles.parent, {
+            rectStyle: obj.rectStyle || {},
+            textStyle: obj.textStyle || {}
+        });
+        var prevStyle = angular.extend({}, treemap.styles.parent);
         var areas = treemap.runLayout(obj, treemap.outer);
         var branches = obj.children;
         for (var i = 0, branch, area;
@@ -110,58 +164,29 @@
             branch.y = area.y;
             branch.width = area.width;
             branch.height = area.height;
-            // treemap.outer.x = area.x;
-            // treemap.outer.y = area.y;
-            // treemap.outer.width = area.width;
-            // treemap.outer.height = area.height;
-            // treemap.outer.layout = child.layout || 'none';
-            // child.padding && treemap.padding(child.padding);
-            // treemap.runLayout(child, treemap.outer);
+
             treemap.generate(branch);
+            treemap.styles.parent = prevStyle;
         }
-    }
+    };
     treemap.setStyle = function(obj) {
         var ctx = treemap.ctx;
-        obj.textStyle && treemap.textStyle(obj.textStyle);
-        obj.rectStyle && treemap.rectStyle(obj.rectStyle);
+        var textStyle = obj.textStyle ? treemap.textStyle(obj.textStyle) : treemap.textStyle();
+        var rectStyle = obj.rectStyle ? treemap.rectStyle(obj.rectStyle) : treemap.rectStyle();
+        return {
+            textStyle: textStyle,
+            rectStyle: rectStyle
+        };
     };
     treemap.runLayout = function(obj, outer) {
-        treemap.setStyle(obj);
         if (outer.layout === 'vertical') {
             return treemap.runVerticalLayout(obj, outer);
         } else if (outer.layout === 'horizontal') {
             return treemap.runHorizontalLayout(obj, outer);
         } else {
-            return treemap.runNoLayout(obj);
+            return treemap.runNoLayout(obj, parentStyle);
         }
     };
-    treemap.drawRect = function(obj) {
-        var ctx = treemap.ctx;
-        if (obj.x && obj.y && obj.width && obj.height) {
-            if (obj.borderRadius && obj.borderRadius > 0) {
-                ctx.lineWidth = 5;
-                ctx.fillStyle = "red";
-                ctx.strokeStyle = "black";
-                ctx.roundRect(obj.x, obj.y, obj.width, obj.height, obj.borderRadius);
-                ctx.fill();
-                ctx.stroke();
-            } else {
-                ctx.fillStyle = treemap.defaults.rectStyle.fillColor;
-                ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
-                ctx.strokeRect(obj.x, obj.y, obj.width, obj.height);
-            }
-        } else {
-            console.error("Rect's position or size not defined");
-        }
-        treemap.showLabel(obj);
-    };
-    treemap.showLabel = function(obj) {
-        var ctx = treemap.ctx;
-        var x = ctx.textAlign === 'center' ? (obj.x + obj.width / 2) : obj.x;
-        var y = obj.y + obj.height / 2;
-        ctx.fillStyle = treemap.defaults.textStyle.textColor;
-        ctx.fillText(obj.label, x + 10, y);
-    }
     treemap.runNoLayout = function(obj) {
         var areas = [];
         for (var i = 0, child; child = obj.children[i]; i++) {
@@ -170,11 +195,13 @@
                 x: child.x,
                 y: child.y,
                 width: child.width,
-                height: child.height,
-                borderRadius: child.borderRadius || 0
+                height: child.height
             }
             areas.push(rect);
-            treemap.setStyle(obj);
+            treemap.styles.child = treemap.inheritStyle(treemap.styles.parent, {
+                rectStyle: child.rectStyle || {},
+                textStyle: child.textStyle || {}
+            });
             treemap.drawRect(rect);
         }
         return areas;
@@ -184,16 +211,18 @@
         var count = obj.children.length;
         var outerWidth = outer.width;
         var outerHeight = outer.height;
-        var paddingX = outer.padding.x;
-        var paddingY = outer.padding.y;
-        if (outerWidth - paddingX * 2 < 0) {
-            paddingX = outerWidth / 3;
-        }
-        if ((outerHeight - (count + 1) * paddingY) / count < 0) {
-            paddingY = outerHeight / (2 * count + 1);
-        }
+        var paddingX = outer.paddingX;
+        var paddingY = outer.paddingY;
         var width = outerWidth - paddingX * 2;
         var height = (outerHeight - (count + 1) * paddingY) / count;
+        if (width < paddingX) {
+            paddingX = outerWidth / 4;
+            width = paddingX * 2;
+        }
+        if (height < paddingY) {
+            paddingY = outerHeight / (3 * count + 1);
+            height = paddingY * 2;
+        }
         var start = {
             x: outer.x + paddingX,
             y: outer.y + paddingY
@@ -206,11 +235,13 @@
                 x: x,
                 y: y,
                 width: child.width || width,
-                height: height,
-                borderRadius: child.borderRadius || 0
+                height: height
             }
             areas.push(rect);
-            treemap.setStyle(obj);
+            treemap.styles.child = treemap.inheritStyle(treemap.styles.parent, {
+                rectStyle: child.rectStyle || {},
+                textStyle: child.textStyle || {}
+            });
             treemap.drawRect(rect);
         }
         return areas;
@@ -220,16 +251,18 @@
         var count = obj.children.length;
         var outerWidth = outer.width;
         var outerHeight = outer.height;
-        var paddingX = outer.padding.x;
-        var paddingY = outer.padding.y;
-        if (outerHeight - paddingY * 2) {
-            paddingY = outerHeight / 3;
-        }
-        if ((outerWidth - (count + 1) * paddingX) / count < 0) {
-            paddingX = outerWidth / (2 * count + 1);
-        }
-        var height = outerHeight - paddingY * 2;
+        var paddingX = outer.paddingX;
+        var paddingY = outer.paddingY;
         var width = (outerWidth - (count + 1) * paddingX) / count;
+        var height = outerHeight - paddingY * 2;
+        if (width < paddingX) {
+            paddingX = outerWidth / (3 * count + 1);
+            width = paddingX * 2;
+        }
+        if (height < paddingY) {
+            paddingY = outerHeight / 4;
+            height = paddingY * 2;
+        }
         var start = {
             x: outer.x + paddingX,
             y: outer.y + paddingY
@@ -242,19 +275,56 @@
                 x: x,
                 y: y,
                 height: child.height || height,
-                width: width,
-                borderRadius: child.borderRadius || 0
+                width: width
             }
             areas.push(rect);
-            treemap.setStyle(obj);
+            treemap.styles.child = treemap.inheritStyle(treemap.styles.parent, {
+                rectStyle: child.rectStyle || {},
+                textStyle: child.textStyle || {}
+            });
             treemap.drawRect(rect);
         }
         return areas;
     };
+    treemap.drawRect = function(obj) {
+        if (!(obj.x && obj.y && obj.width && obj.height)) {
+            console.error("Rect's position or size should be defined.");
+            return;
+        }
+        var ctx = treemap.ctx;
+        
+        if (obj.rectStyle && obj.rectStyle.borderRadius && obj.rectStyle.borderRadius > 0) {
+            // ctx.lineWidth = 5;
+            // ctx.fillStyle = treemap.styles.rect.fillColor;
+            // ctx.strokeStyle = treemap.styles.rect.strokeColor;
+            treemap.rectStyle(treemap.styles.child.rectStyle);
+            ctx.roundRect(obj.x, obj.y, obj.width, obj.height, obj.rectStyle.borderRadius);
+            ctx.fill();
+            ctx.stroke();
+        } else {
+            // ctx.fillStyle = treemap.styles.rect.fillColor;
+            // ctx.strokeStyle = treemap.styles.rect.strokeColor;
+            treemap.rectStyle(treemap.styles.child.rectStyle);
+            // ctx.rect(obj.x, obj.y, obj.width, obj.height);
+            // ctx.fill();
+            // ctx.stroke();
+            ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+            ctx.strokeRect(obj.x, obj.y, obj.width, obj.height);
+        }
+        treemap.showLabel(obj);
+    };
+    treemap.showLabel = function(obj) {
+        if (!obj || !obj.label) {
+            return;
+        }
+        var ctx = treemap.ctx;
+        treemap.textStyle(treemap.styles.child.textStyle);
+        var x = ctx.textAlign === 'center' ? (obj.x + obj.width / 2) : obj.x + treemap.styles.text.offsetX;
+        var y = obj.y + obj.height / 2;
+        ctx.fillText(obj.label, x, y);
+    };
     window.treemap = treemap;
 })(window);
-
-
 
 var canvasModule = angular.module('canvas', []);
 canvasModule.controller('canvasCtrl', ['$scope', '$timeout', function($scope, $timeout) {
@@ -266,29 +336,34 @@ canvasModule.controller('canvasCtrl', ['$scope', '$timeout', function($scope, $t
     var option = {
         root: {
             layout: 'vertical',
+            paddingX: 5,
+            paddingY: 5,
             label: 'label',
             textStyle: {
                 textAlign: 'center'
             },
-            padding: {
-                x: 10,
-                y: 10
+            rectStyle: {
+                fillColor: 'black'
             },
             children: [{
                 x: 50,
                 y: 50,
-                width: 460,
+                width: 300,
                 height: 50,
-                label: 'm1',
+                // label: 'm1',
                 layout: 'vertical',
-                borderRadius: 5,
-                padding: {
-                    x: 10,
-                    y: 10
+                rectStyle: {
+                    borderRadius: 5,
+                    fillColor: 'red'
                 },
+                paddingX: 10,
+                paddingY: 10,
                 children: [{
                     x: 100,
-                    label: "m1.1"
+                    label: "m1.1",
+                    rectStyle: {
+                        borderRadius: 10
+                    },
                 }, {
                     x: 100,
                     label: "m1.2"
@@ -298,23 +373,25 @@ canvasModule.controller('canvasCtrl', ['$scope', '$timeout', function($scope, $t
                 y: 50,
                 width: 460,
                 height: 50,
-                label: 'm2',
+                paddingX: 5,
+                paddingY: 5,
+                // label: 'm2',
                 layout: 'vertical',
                 children: [{
-                    label: 'm2.1',
+                    // label: 'm2.1',
                     layout: 'horizontal',
                     children: [{
                         label: 'm2.1.1'
                     }, {
-                        label: 'm2.1.1'
+                        label: 'm2.1.2'
                     }, {
-                        label: 'm2.1.1'
+                        label: 'm2.1.3'
                     }]
                 }, {
                     label: 'm2.2',
                     width: 100
                 }, {
-                    label: 'm2.3',
+                    // label: 'm2.3',
                     layout: 'horizontal',
                     children: [{
                         label: 'm2.3.1'
